@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "omnifocus": {
+      "command": "/path/to/mcp-omnifocus/bin/mcp-omnifocus"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+#!/usr/bin/osascript -l JavaScript
+
+function run(argv) {
+    if (argv.length === 0) {
+        return JSON.stringify({error: 'Task ID required'});
+    }
+
+    const app = Application('OmniFocus');
+    app.includeStandardAdditions = true;
+
+    const doc = app.defaultDocument;
+    const taskId = argv[0];
+
+    const tasks = doc.flattenedTasks.whose({id: taskId});
+    if (tasks.length === 0) {
+        return JSON.stringify({error: 'Task not found'});
+    }
+
+    const task = tasks[0];
+    task.markComplete();
+
+    return JSON.stringify({
+        id: task.id(),
+        name: task.name(),
+        completed: task.completed(),
+        success: true
+    });
+}

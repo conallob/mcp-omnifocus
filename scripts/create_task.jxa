@@ -1,0 +1,67 @@
+#!/usr/bin/osascript -l JavaScript
+
+function run(argv) {
+    if (argv.length === 0) {
+        return JSON.stringify({error: 'Task data required as JSON argument'});
+    }
+
+    const app = Application('OmniFocus');
+    app.includeStandardAdditions = true;
+
+    const doc = app.defaultDocument;
+    const taskData = JSON.parse(argv[0]);
+
+    let task;
+
+    if (taskData.projectId) {
+        // Add to specific project
+        const project = doc.flattenedProjects.whose({id: taskData.projectId})[0];
+        if (!project) {
+            return JSON.stringify({error: 'Project not found'});
+        }
+        task = doc.Task({name: taskData.name});
+        project.tasks.push(task);
+    } else {
+        // Add to inbox
+        task = doc.Task({name: taskData.name});
+        doc.inboxTasks.push(task);
+    }
+
+    // Set optional properties
+    if (taskData.note) {
+        task.note = taskData.note;
+    }
+
+    if (taskData.dueDate) {
+        task.dueDate = new Date(taskData.dueDate);
+    }
+
+    if (taskData.flagged !== undefined) {
+        task.flagged = taskData.flagged;
+    }
+
+    if (taskData.estimatedMinutes) {
+        task.estimatedMinutes = taskData.estimatedMinutes;
+    }
+
+    // Add tags
+    if (taskData.tags && taskData.tags.length > 0) {
+        taskData.tags.forEach(tagName => {
+            const tags = doc.flattenedTags.whose({name: tagName});
+            if (tags.length > 0) {
+                task.addTag(tags[0]);
+            } else {
+                // Create tag if it doesn't exist
+                const newTag = doc.Tag({name: tagName});
+                doc.tags.push(newTag);
+                task.addTag(newTag);
+            }
+        });
+    }
+
+    return JSON.stringify({
+        id: task.id(),
+        name: task.name(),
+        success: true
+    });
+}

@@ -1,0 +1,42 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Download dependencies
+        run: make deps
+
+      - name: Build
+        run: make build
+
+      - name: Verify binary
+        run: |
+          ls -lh bin/
+          file bin/mcp-omnifocus
+
+      - name: Test JXA scripts have execute permissions
+        run: |
+          ls -l scripts/*.jxa
+          for script in scripts/*.jxa; do
+            if [ ! -x "$script" ]; then
+              echo "Error: $script is not executable"
+              exit 1
+            fi
+          done

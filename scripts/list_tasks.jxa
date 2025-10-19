@@ -1,0 +1,48 @@
+#!/usr/bin/osascript -l JavaScript
+
+function run(argv) {
+    const app = Application('OmniFocus');
+    app.includeStandardAdditions = true;
+
+    const doc = app.defaultDocument;
+    const projectId = argv.length > 0 ? argv[0] : null;
+
+    let tasks;
+    if (projectId) {
+        const project = doc.flattenedProjects.whose({id: projectId})[0];
+        if (!project) {
+            return JSON.stringify({error: 'Project not found'});
+        }
+        tasks = project.flattenedTasks();
+    } else {
+        tasks = doc.flattenedTasks();
+    }
+
+    const result = [];
+
+    tasks.forEach(task => {
+        const tagNames = [];
+        try {
+            const tags = task.tags();
+            tags.forEach(tag => {
+                tagNames.push(tag.name());
+            });
+        } catch (e) {
+            // No tags
+        }
+
+        result.push({
+            id: task.id(),
+            name: task.name(),
+            note: task.note() || '',
+            completed: task.completed(),
+            flagged: task.flagged(),
+            dueDate: task.dueDate() ? task.dueDate().toISOString() : null,
+            estimatedMinutes: task.estimatedMinutes() || null,
+            tags: tagNames,
+            containingProjectId: task.containingProject() ? task.containingProject().id() : null
+        });
+    });
+
+    return JSON.stringify(result, null, 2);
+}

@@ -1,0 +1,59 @@
+#!/usr/bin/osascript -l JavaScript
+
+function run(argv) {
+    if (argv.length === 0) {
+        return JSON.stringify({error: 'Task update data required as JSON argument'});
+    }
+
+    const app = Application('OmniFocus');
+    app.includeStandardAdditions = true;
+
+    const doc = app.defaultDocument;
+    const updateData = JSON.parse(argv[0]);
+
+    if (!updateData.id) {
+        return JSON.stringify({error: 'Task ID required'});
+    }
+
+    const tasks = doc.flattenedTasks.whose({id: updateData.id});
+    if (tasks.length === 0) {
+        return JSON.stringify({error: 'Task not found'});
+    }
+
+    const task = tasks[0];
+
+    // Update properties
+    if (updateData.name !== undefined) {
+        task.name = updateData.name;
+    }
+
+    if (updateData.note !== undefined) {
+        task.note = updateData.note;
+    }
+
+    if (updateData.completed !== undefined) {
+        task.completed = updateData.completed;
+    }
+
+    if (updateData.flagged !== undefined) {
+        task.flagged = updateData.flagged;
+    }
+
+    if (updateData.dueDate !== undefined) {
+        if (updateData.dueDate === null) {
+            task.dueDate = null;
+        } else {
+            task.dueDate = new Date(updateData.dueDate);
+        }
+    }
+
+    if (updateData.estimatedMinutes !== undefined) {
+        task.estimatedMinutes = updateData.estimatedMinutes;
+    }
+
+    return JSON.stringify({
+        id: task.id(),
+        name: task.name(),
+        success: true
+    });
+}

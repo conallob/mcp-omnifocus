@@ -1,0 +1,109 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: mcp-omnifocus
+    main: ./cmd/mcp-omnifocus
+    binary: mcp-omnifocus
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - README.md
+      - LICENSE
+      - QUICKSTART.md
+      - config-example.json
+      - scripts/*.jxa
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - '^chore:'
+      - '^build:'
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: Improvements
+      regexp: '^.*?(refactor|perf)(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: Others
+      order: 999
+
+brews:
+  - name: mcp-omnifocus
+    repository:
+      owner: conallob
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formula
+    homepage: "https://github.com/conall/mcp-omnifocus"
+    description: "MCP server for interacting with OmniFocus Pro through its automation API"
+    license: "MIT"
+    skip_upload: auto
+    install: |
+      bin.install "mcp-omnifocus"
+      (share/"mcp-omnifocus").install Dir["scripts/*.jxa"]
+      (share/"mcp-omnifocus").install "config-example.json"
+    caveats: |
+      The JXA scripts are installed to:
+        #{share}/mcp-omnifocus/scripts/
+
+      An example configuration file is available at:
+        #{share}/mcp-omnifocus/config-example.json
+
+      Follow the Quick Start Guide for setup instructions:
+        https://github.com/conall/mcp-omnifocus/blob/main/QUICKSTART.md
+
+release:
+  github:
+    owner: conall
+    name: mcp-omnifocus
+  draft: false
+  prerelease: auto
+  name_template: "{{.ProjectName}} v{{.Version}}"
+  header: |
+    ## MCP OmniFocus Server v{{ .Version }}
+
+    An MCP server for interacting with OmniFocus Pro through its automation API.
+
+    ### Installation
+
+    Download the appropriate binary for your system and follow the [Quick Start Guide](https://github.com/conall/mcp-omnifocus/blob/main/QUICKSTART.md).
+
+    ### What's Changed

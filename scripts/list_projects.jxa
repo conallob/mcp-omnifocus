@@ -1,0 +1,25 @@
+#!/usr/bin/osascript -l JavaScript
+
+function run() {
+    const app = Application('OmniFocus');
+    app.includeStandardAdditions = true;
+
+    const doc = app.defaultDocument;
+    const projects = doc.flattenedProjects();
+
+    const result = [];
+
+    projects.forEach(project => {
+        result.push({
+            id: project.id(),
+            name: project.name(),
+            status: project.status(),
+            note: project.note() || '',
+            completed: project.completed(),
+            numberOfTasks: project.numberOfTasks(),
+            numberOfCompletedTasks: project.numberOfCompletedTasks()
+        });
+    });
+
+    return JSON.stringify(result, null, 2);
+}

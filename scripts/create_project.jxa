@@ -1,0 +1,46 @@
+#!/usr/bin/osascript -l JavaScript
+
+function run(argv) {
+    if (argv.length === 0) {
+        return JSON.stringify({error: 'Project data required as JSON argument'});
+    }
+
+    const app = Application('OmniFocus');
+    app.includeStandardAdditions = true;
+
+    const doc = app.defaultDocument;
+    const projectData = JSON.parse(argv[0]);
+
+    const project = doc.Project({name: projectData.name});
+    doc.projects.push(project);
+
+    // Set optional properties
+    if (projectData.note) {
+        project.note = projectData.note;
+    }
+
+    if (projectData.status) {
+        project.status = projectData.status;
+    }
+
+    // Add tags
+    if (projectData.tags && projectData.tags.length > 0) {
+        projectData.tags.forEach(tagName => {
+            const tags = doc.flattenedTags.whose({name: tagName});
+            if (tags.length > 0) {
+                project.addTag(tags[0]);
+            } else {
+                // Create tag if it doesn't exist
+                const newTag = doc.Tag({name: tagName});
+                doc.tags.push(newTag);
+                project.addTag(newTag);
+            }
+        });
+    }
+
+    return JSON.stringify({
+        id: project.id(),
+        name: project.name(),
+        success: true
+    });
+}
