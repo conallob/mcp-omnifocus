@@ -92,7 +92,7 @@ brews:
 
 release:
   github:
-    owner: conall
+    owner: conallob
     name: mcp-omnifocus
   draft: false
   prerelease: auto
