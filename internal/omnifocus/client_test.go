@@ -72,3 +72,38 @@ func TestNewClient(t *testing.T) {
 
 	t.Logf("Client initialized with scriptsDir: %s", client.scriptsDir)
 }
+
+func TestNewClientWithPath(t *testing.T) {
+	// Test with a custom path
+	customPath := "/custom/path/to/scripts"
+	client := NewClientWithPath(customPath)
+
+	if client == nil {
+		t.Fatal("NewClientWithPath returned nil")
+	}
+
+	if client.scriptsDir != customPath {
+		t.Errorf("Client scriptsDir = %s, want %s", client.scriptsDir, customPath)
+	}
+
+	t.Logf("Client initialized with custom scriptsDir: %s", client.scriptsDir)
+
+	// Test with the actual scripts directory
+	actualScriptsDir := findScriptsDir()
+	client2 := NewClientWithPath(actualScriptsDir)
+
+	if client2 == nil {
+		t.Fatal("NewClientWithPath returned nil for actual scripts dir")
+	}
+
+	if client2.scriptsDir != actualScriptsDir {
+		t.Errorf("Client scriptsDir = %s, want %s", client2.scriptsDir, actualScriptsDir)
+	}
+
+	// Verify the GetScriptsDir method returns the correct value
+	if client2.GetScriptsDir() != actualScriptsDir {
+		t.Errorf("GetScriptsDir() = %s, want %s", client2.GetScriptsDir(), actualScriptsDir)
+	}
+
+	t.Logf("Client initialized with actual scriptsDir: %s", client2.scriptsDir)
+}

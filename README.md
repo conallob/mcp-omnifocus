@@ -76,7 +76,8 @@ Edit your Claude Desktop config file (usually at `~/Library/Application Support/
 {
   "mcpServers": {
     "omnifocus": {
-      "command": "/Users/YOUR_USERNAME/mcp-servers/omnifocus/mcp-omnifocus"
+      "command": "/Users/YOUR_USERNAME/mcp-servers/omnifocus/mcp-omnifocus",
+      "args": ["-scripts", "/Users/YOUR_USERNAME/mcp-servers/omnifocus/scripts"]
     }
   }
 }
@@ -87,13 +88,16 @@ Edit your Claude Desktop config file (usually at `~/Library/Application Support/
 {
   "mcpServers": {
     "omnifocus": {
-      "command": "/absolute/path/to/mcp-omnifocus/bin/mcp-omnifocus"
+      "command": "/absolute/path/to/mcp-omnifocus/bin/mcp-omnifocus",
+      "args": ["-scripts", "/absolute/path/to/mcp-omnifocus/scripts"]
     }
   }
 }
 ```
 
-Replace the path with the actual location where you installed or built the binary.
+Replace the paths with the actual locations where you installed or built the binary and scripts.
+
+**Note:** The `-scripts` argument is optional. If not provided, the server will attempt to auto-detect the scripts directory. However, explicitly specifying the path is recommended for reliability.
 
 ## Available Tools
 

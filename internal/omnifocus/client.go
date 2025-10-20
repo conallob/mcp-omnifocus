@@ -15,11 +15,18 @@ type Client struct {
 	scriptsDir string
 }
 
-// NewClient creates a new OmniFocus client
+// NewClient creates a new OmniFocus client with auto-detected scripts directory
 func NewClient() *Client {
 	scriptsDir := findScriptsDir()
 	return &Client{
 		scriptsDir: scriptsDir,
+	}
+}
+
+// NewClientWithPath creates a new OmniFocus client with a specified scripts directory path
+func NewClientWithPath(scriptsPath string) *Client {
+	return &Client{
+		scriptsDir: scriptsPath,
 	}
 }
 

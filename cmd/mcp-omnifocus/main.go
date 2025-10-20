@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 
@@ -16,8 +17,17 @@ const (
 )
 
 func main() {
+	// Define command line flags
+	scriptsPath := flag.String("scripts", "", "Path to the JXA scripts directory (if not specified, auto-detection is used)")
+	flag.Parse()
+
 	// Create OmniFocus client
-	ofClient := omnifocus.NewClient()
+	var ofClient *omnifocus.Client
+	if *scriptsPath != "" {
+		ofClient = omnifocus.NewClientWithPath(*scriptsPath)
+	} else {
+		ofClient = omnifocus.NewClient()
+	}
 
 	// Create MCP server
 	s := server.NewMCPServer(

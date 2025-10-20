@@ -37,7 +37,8 @@ This creates the executable at `bin/mcp-omnifocus`.
    {
      "mcpServers": {
        "omnifocus": {
-         "command": "/absolute/path/to/mcp-omnifocus/bin/mcp-omnifocus"
+         "command": "/absolute/path/to/mcp-omnifocus/bin/mcp-omnifocus",
+         "args": ["-scripts", "/absolute/path/to/mcp-omnifocus/scripts"]
        }
      }
    }
@@ -48,11 +49,14 @@ This creates the executable at `bin/mcp-omnifocus`.
    {
      "mcpServers": {
        "omnifocus": {
-         "command": "/Users/conall/Documents/GitHub/mcp-omnifocus/bin/mcp-omnifocus"
+         "command": "/Users/conall/Documents/GitHub/mcp-omnifocus/bin/mcp-omnifocus",
+         "args": ["-scripts", "/Users/conall/Documents/GitHub/mcp-omnifocus/scripts"]
        }
      }
    }
    ```
+
+   **Note**: The `-scripts` argument is optional. If omitted, the server will auto-detect the scripts directory, but specifying it explicitly is more reliable.
 
 3. Save the file and restart Claude Desktop.
 

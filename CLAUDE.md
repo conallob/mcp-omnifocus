@@ -64,6 +64,7 @@ scripts/                    # JXA automation scripts
 ### Running
 - `make run` - Run the server directly with `go run`
 - `./bin/mcp-omnifocus` - Run the compiled binary
+- `./bin/mcp-omnifocus -scripts /path/to/scripts` - Run with explicit scripts path
 
 ### Testing JXA Scripts
 Scripts can be tested independently:
@@ -91,7 +92,29 @@ All tools are registered in `cmd/mcp-omnifocus/main.go` in the `registerTools()`
 ## Important Implementation Notes
 
 ### Script Path Resolution
-The client automatically detects the JXA scripts directory by checking multiple locations in this order:
+
+The server supports two ways to specify the scripts directory:
+
+#### 1. Command Line Flag (Recommended)
+Use the `-scripts` flag to explicitly specify the path:
+```bash
+./bin/mcp-omnifocus -scripts /path/to/scripts
+```
+
+This is the recommended approach for MCP configurations:
+```json
+{
+  "mcpServers": {
+    "omnifocus": {
+      "command": "/path/to/mcp-omnifocus",
+      "args": ["-scripts", "/path/to/scripts"]
+    }
+  }
+}
+```
+
+#### 2. Auto-Detection (Fallback)
+If the `-scripts` flag is not provided, the client automatically detects the JXA scripts directory by checking multiple locations in this order:
 1. Scripts directory next to the binary (release package layout)
 2. Scripts directory one level up (for bin/mcp-omnifocus structure)
 3. Homebrew installation path (`../share/mcp-omnifocus/scripts/`)
