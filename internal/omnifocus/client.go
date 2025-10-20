@@ -3,6 +3,7 @@ package omnifocus
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -15,14 +16,97 @@ type Client struct {
 
 // NewClient creates a new OmniFocus client
 func NewClient() *Client {
-	// Get the scripts directory relative to the binary
-	_, filename, _, _ := runtime.Caller(0)
-	projectRoot := filepath.Join(filepath.Dir(filename), "..", "..")
-	scriptsDir := filepath.Join(projectRoot, "scripts")
-
+	scriptsDir := findScriptsDir()
 	return &Client{
 		scriptsDir: scriptsDir,
 	}
+}
+
+// GetScriptsDir returns the path to the scripts directory
+// This is primarily used for testing and debugging
+func (c *Client) GetScriptsDir() string {
+	return c.scriptsDir
+}
+
+// findScriptsDir attempts to locate the scripts directory in multiple locations
+func findScriptsDir() string {
+	// Get the executable path
+	execPath, err := os.Executable()
+	if err != nil {
+		execPath = ""
+	} else {
+		// Resolve symlinks (important for Homebrew installations)
+		execPath, err = filepath.EvalSymlinks(execPath)
+		if err != nil {
+			execPath = ""
+		}
+	}
+
+	// List of candidate paths to check, in order of preference
+	var candidates []string
+
+	if execPath != "" {
+		execDir := filepath.Dir(execPath)
+
+		// 1. Scripts directory next to the binary (release package layout)
+		candidates = append(candidates, filepath.Join(execDir, "scripts"))
+
+		// 2. Scripts directory one level up (for bin/mcp-omnifocus structure)
+		candidates = append(candidates, filepath.Join(execDir, "..", "scripts"))
+
+		// 3. Homebrew installation path (share/mcp-omnifocus/)
+		candidates = append(candidates, filepath.Join(execDir, "..", "share", "mcp-omnifocus", "scripts"))
+	}
+
+	// 4. Relative to the Go source file (development mode with go run)
+	_, filename, _, ok := runtime.Caller(0)
+	if ok {
+		projectRoot := filepath.Join(filepath.Dir(filename), "..", "..")
+		candidates = append(candidates, filepath.Join(projectRoot, "scripts"))
+	}
+
+	// 5. Check current working directory (fallback)
+	if cwd, err := os.Getwd(); err == nil {
+		candidates = append(candidates, filepath.Join(cwd, "scripts"))
+	}
+
+	// Try each candidate path
+	for _, dir := range candidates {
+		absDir, err := filepath.Abs(dir)
+		if err != nil {
+			continue
+		}
+
+		// Check if the directory exists and contains at least one .jxa file
+		if isValidScriptsDir(absDir) {
+			return absDir
+		}
+	}
+
+	// If nothing found, fall back to the development layout
+	_, filename, _, _ = runtime.Caller(0)
+	projectRoot := filepath.Join(filepath.Dir(filename), "..", "..")
+	return filepath.Join(projectRoot, "scripts")
+}
+
+// isValidScriptsDir checks if a directory exists and contains .jxa files
+func isValidScriptsDir(dir string) bool {
+	// Check if directory exists
+	info, err := os.Stat(dir)
+	if err != nil || !info.IsDir() {
+		return false
+	}
+
+	// Check for at least one required script file
+	requiredScripts := []string{"list_projects.jxa", "list_tasks.jxa", "create_task.jxa"}
+	for _, script := range requiredScripts {
+		scriptPath := filepath.Join(dir, script)
+		if _, err := os.Stat(scriptPath); err == nil {
+			return true
+		}
+	}
+
+	return false
 }
 
 // executeJXA executes a JXA script and returns the output
