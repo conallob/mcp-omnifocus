@@ -11,12 +11,18 @@ function run(argv) {
     const doc = app.defaultDocument;
     const taskId = argv[0];
 
-    const tasks = doc.flattenedTasks.whose({id: taskId});
-    if (tasks.length === 0) {
+    // Find task by ID
+    const allTasks = doc.flattenedTasks();
+    let task = null;
+    for (let i = 0; i < allTasks.length; i++) {
+        if (allTasks[i].id() === taskId) {
+            task = allTasks[i];
+            break;
+        }
+    }
+    if (!task) {
         return JSON.stringify({error: 'Task not found'});
     }
-
-    const task = tasks[0];
     task.markComplete();
 
     return JSON.stringify({

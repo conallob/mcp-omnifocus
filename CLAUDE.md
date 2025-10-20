@@ -66,13 +66,20 @@ scripts/                    # JXA automation scripts
 - `./bin/mcp-omnifocus` - Run the compiled binary
 - `./bin/mcp-omnifocus -scripts /path/to/scripts` - Run with explicit scripts path
 
+### Testing
+- `make test` - Run all tests (includes Go tests and JXA validation)
+- `make validate-jxa` - Validate JXA script syntax only
+- `go test ./... -v` - Run Go tests only
+
 ### Testing JXA Scripts
 Scripts can be tested independently:
 ```bash
-osascript scripts/list_projects.jxa
-osascript scripts/list_tasks.jxa
-osascript scripts/create_task.jxa '{"name":"Test Task"}'
+osascript -l JavaScript scripts/list_projects.jxa
+osascript -l JavaScript scripts/list_tasks.jxa
+osascript -l JavaScript scripts/create_task.jxa '{"name":"Test Task"}'
 ```
+
+**Important:** Always use the `-l JavaScript` flag when testing JXA scripts with `osascript` to ensure proper syntax parsing.
 
 ## MCP Tools
 
@@ -193,6 +200,16 @@ To test the MCP server locally:
 2. Configure in Claude Desktop or use MCP inspector
 3. Check that JXA scripts have execute permissions (`chmod +x scripts/*.jxa`)
 4. Ensure OmniFocus is running and has projects/tasks to query
+
+## Continuous Integration
+
+The project uses GitHub Actions for CI/CD. The build workflow (`.github/workflows/build.yml`) runs on every push and pull request to `main`:
+
+1. **Build** - Compiles the Go binary
+2. **Validate JXA Syntax** - Uses `osacompile` to check all JXA scripts for syntax errors without executing them
+3. **Run Tests** - Executes all Go tests
+
+The JXA syntax validation ensures that script syntax errors are caught early, before they cause runtime failures. This is particularly important because the `-l JavaScript` flag must be used when calling `osascript` for proper syntax parsing.
 
 ## Release Process
 

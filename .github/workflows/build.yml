@@ -40,3 +40,9 @@ jobs:
               exit 1
             fi
           done
+
+      - name: Validate JXA script syntax
+        run: make validate-jxa
+
+      - name: Run Go tests
+        run: go test ./... -v

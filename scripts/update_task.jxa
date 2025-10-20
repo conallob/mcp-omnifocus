@@ -15,12 +15,18 @@ function run(argv) {
         return JSON.stringify({error: 'Task ID required'});
     }
 
-    const tasks = doc.flattenedTasks.whose({id: updateData.id});
-    if (tasks.length === 0) {
+    // Find task by ID
+    const allTasks = doc.flattenedTasks();
+    let task = null;
+    for (let i = 0; i < allTasks.length; i++) {
+        if (allTasks[i].id() === updateData.id) {
+            task = allTasks[i];
+            break;
+        }
+    }
+    if (!task) {
         return JSON.stringify({error: 'Task not found'});
     }
-
-    const task = tasks[0];
 
     // Update properties
     if (updateData.name !== undefined) {

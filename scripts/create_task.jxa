@@ -15,7 +15,15 @@ function run(argv) {
 
     if (taskData.projectId) {
         // Add to specific project
-        const project = doc.flattenedProjects.whose({id: taskData.projectId})[0];
+        // Find project by ID
+        const allProjects = doc.flattenedProjects();
+        let project = null;
+        for (let i = 0; i < allProjects.length; i++) {
+            if (allProjects[i].id() === taskData.projectId) {
+                project = allProjects[i];
+                break;
+            }
+        }
         if (!project) {
             return JSON.stringify({error: 'Project not found'});
         }
@@ -47,9 +55,17 @@ function run(argv) {
     // Add tags
     if (taskData.tags && taskData.tags.length > 0) {
         taskData.tags.forEach(tagName => {
-            const tags = doc.flattenedTags.whose({name: tagName});
-            if (tags.length > 0) {
-                task.addTag(tags[0]);
+            // Find tag by name
+            const allTags = doc.flattenedTags();
+            let foundTag = null;
+            for (let i = 0; i < allTags.length; i++) {
+                if (allTags[i].name() === tagName) {
+                    foundTag = allTags[i];
+                    break;
+                }
+            }
+            if (foundTag) {
+                task.addTag(foundTag);
             } else {
                 // Create tag if it doesn't exist
                 const newTag = doc.Tag({name: tagName});

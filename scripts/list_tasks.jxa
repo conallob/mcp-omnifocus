@@ -9,7 +9,15 @@ function run(argv) {
 
     let tasks;
     if (projectId) {
-        const project = doc.flattenedProjects.whose({id: projectId})[0];
+        // Find project by ID
+        const allProjects = doc.flattenedProjects();
+        let project = null;
+        for (let i = 0; i < allProjects.length; i++) {
+            if (allProjects[i].id() === projectId) {
+                project = allProjects[i];
+                break;
+            }
+        }
         if (!project) {
             return JSON.stringify({error: 'Project not found'});
         }

@@ -182,7 +182,8 @@ func isValidScriptsDir(dir string) bool {
 func (c *Client) executeJXA(scriptName string, args ...string) ([]byte, error) {
 	scriptPath := filepath.Join(c.scriptsDir, scriptName)
 
-	cmdArgs := append([]string{scriptPath}, args...)
+	// Build command arguments: -l JavaScript, script path, then script arguments
+	cmdArgs := append([]string{"-l", "JavaScript", scriptPath}, args...)
 	cmd := exec.Command("osascript", cmdArgs...)
 
 	output, err := cmd.CombinedOutput()
