@@ -10,7 +10,23 @@ This guide will help you get the MCP OmniFocus server running with Claude Deskto
 
 ## Installation
 
-### 1. Build the Server
+You can install the MCP OmniFocus server either via Homebrew or by building from source.
+
+### Option A: Install via Homebrew (Recommended)
+
+```bash
+# Add the tap (if not already added)
+brew tap conall/mcp-omnifocus
+
+# Install the server
+brew install mcp-omnifocus
+```
+
+This installs:
+- The `mcp-omnifocus` binary to `/opt/homebrew/bin/` (Apple Silicon) or `/usr/local/bin/` (Intel)
+- The JXA scripts to `/opt/homebrew/share/mcp-omnifocus/scripts/` (Apple Silicon) or `/usr/local/share/mcp-omnifocus/scripts/` (Intel)
+
+### Option B: Build from Source
 
 ```bash
 # Clone or navigate to the repository
@@ -25,14 +41,42 @@ make build
 
 This creates the executable at `bin/mcp-omnifocus`.
 
-### 2. Configure Claude Desktop
+## Configuration
+
+### 1. Configure Claude Desktop
 
 1. Open your Claude Desktop configuration file:
    ```bash
    open ~/Library/Application\ Support/Claude/claude_desktop_config.json
    ```
 
-2. Add the OmniFocus MCP server to your configuration:
+2. Add the OmniFocus MCP server to your configuration based on how you installed it:
+
+   **For Homebrew Installation (Apple Silicon):**
+   ```json
+   {
+     "mcpServers": {
+       "omnifocus": {
+         "command": "/opt/homebrew/bin/mcp-omnifocus",
+         "args": ["-scripts", "/opt/homebrew/share/mcp-omnifocus/scripts"]
+       }
+     }
+   }
+   ```
+
+   **For Homebrew Installation (Intel Mac):**
+   ```json
+   {
+     "mcpServers": {
+       "omnifocus": {
+         "command": "/usr/local/bin/mcp-omnifocus",
+         "args": ["-scripts", "/usr/local/share/mcp-omnifocus/scripts"]
+       }
+     }
+   }
+   ```
+
+   **For Source Build:**
    ```json
    {
      "mcpServers": {
@@ -44,7 +88,7 @@ This creates the executable at `bin/mcp-omnifocus`.
    }
    ```
 
-   **Important**: Replace `/absolute/path/to/mcp-omnifocus` with the actual absolute path to your repository. For example:
+   Replace `/absolute/path/to/mcp-omnifocus` with the actual path to your repository. For example:
    ```json
    {
      "mcpServers": {
@@ -56,11 +100,11 @@ This creates the executable at `bin/mcp-omnifocus`.
    }
    ```
 
-   **Note**: The `-scripts` argument is optional. If omitted, the server will auto-detect the scripts directory, but specifying it explicitly is more reliable.
+   **Note**: The `-scripts` argument explicitly tells the server where to find the JXA automation scripts. While the server can auto-detect the scripts directory in many cases, specifying it explicitly ensures reliability across different installation methods.
 
 3. Save the file and restart Claude Desktop.
 
-### 3. Grant Permissions
+### 2. Grant Permissions
 
 On first use, macOS will prompt you to grant automation permissions:
 
@@ -68,7 +112,7 @@ On first use, macOS will prompt you to grant automation permissions:
 2. Grant `osascript` permission to control OmniFocus
 3. You may also need to grant Terminal or Claude Desktop permission
 
-### 4. Test the Server
+### 3. Test the Server
 
 Open Claude Desktop and try these example commands:
 

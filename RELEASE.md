@@ -65,6 +65,79 @@ After the workflow completes:
 3. Download and test one of the archives
 4. Verify checksums.txt is present
 
+## Installation and Usage
+
+### Installing via Homebrew
+
+Users can install the server via Homebrew:
+
+```bash
+brew tap conall/mcp-omnifocus
+brew install mcp-omnifocus
+```
+
+This installs:
+- Binary: `/opt/homebrew/bin/mcp-omnifocus` (Apple Silicon) or `/usr/local/bin/mcp-omnifocus` (Intel)
+- Scripts: `/opt/homebrew/share/mcp-omnifocus/scripts/` (Apple Silicon) or `/usr/local/share/mcp-omnifocus/scripts/` (Intel)
+
+### Installing from Release Archive
+
+Users can also download the release archive and extract it:
+
+```bash
+# Download the appropriate archive for your architecture
+curl -LO https://github.com/conall/mcp-omnifocus/releases/download/v0.1.0/mcp-omnifocus_0.1.0_darwin_arm64.tar.gz
+
+# Extract
+tar -xzf mcp-omnifocus_0.1.0_darwin_arm64.tar.gz
+
+# Move to desired location
+mv mcp-omnifocus /usr/local/bin/
+mv scripts /usr/local/share/mcp-omnifocus/
+```
+
+### Configuring Claude Desktop
+
+Users must configure Claude Desktop to use the server. The configuration depends on the installation method:
+
+**For Homebrew Installation (Apple Silicon):**
+```json
+{
+  "mcpServers": {
+    "omnifocus": {
+      "command": "/opt/homebrew/bin/mcp-omnifocus",
+      "args": ["-scripts", "/opt/homebrew/share/mcp-omnifocus/scripts"]
+    }
+  }
+}
+```
+
+**For Homebrew Installation (Intel Mac):**
+```json
+{
+  "mcpServers": {
+    "omnifocus": {
+      "command": "/usr/local/bin/mcp-omnifocus",
+      "args": ["-scripts", "/usr/local/share/mcp-omnifocus/scripts"]
+    }
+  }
+}
+```
+
+**For Manual Download/Extraction:**
+```json
+{
+  "mcpServers": {
+    "omnifocus": {
+      "command": "/path/to/mcp-omnifocus",
+      "args": ["-scripts", "/path/to/scripts"]
+    }
+  }
+}
+```
+
+**Important**: The `-scripts` flag explicitly specifies where the JXA automation scripts are located. While the server includes auto-detection logic that works for most installation scenarios, using the `-scripts` flag ensures reliability across all installation methods and is the recommended approach.
+
 ## Semantic Versioning
 
 Follow [Semantic Versioning](https://semver.org/):
