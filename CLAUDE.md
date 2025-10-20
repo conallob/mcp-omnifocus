@@ -91,7 +91,38 @@ All tools are registered in `cmd/mcp-omnifocus/main.go` in the `registerTools()`
 ## Important Implementation Notes
 
 ### Script Path Resolution
-The client finds JXA scripts relative to the Go source file location using `runtime.Caller()`. This works for both `go run` and compiled binaries as long as the scripts directory is in the expected location relative to the binary.
+The client automatically detects the JXA scripts directory by checking multiple locations in this order:
+1. Scripts directory next to the binary (release package layout)
+2. Scripts directory one level up (for bin/mcp-omnifocus structure)
+3. Homebrew installation path (`../share/mcp-omnifocus/scripts/`)
+4. Parent directory of the binary (for nested archive extractions)
+5. Walking up the directory tree (up to 3 levels)
+6. Relative to the Go source file (development mode with `go run`)
+7. Current working directory and its parent
+
+This robust path detection works for:
+- Development mode (`go run`)
+- Compiled binaries in the project
+- Extracted release archives
+- Homebrew installations
+- CI/CD environments
+
+#### Debugging Path Detection
+If the scripts are not being found, enable debug logging:
+```bash
+export MCP_OMNIFOCUS_DEBUG=1
+./bin/mcp-omnifocus
+```
+
+This will output detailed information about:
+- The executable path and its resolution
+- All candidate paths being checked
+- Which path was ultimately selected
+
+You can also use the test utility:
+```bash
+go run ./cmd/test-path-detection
+```
 
 ### JSON Communication
 - Go marshals request data to JSON strings

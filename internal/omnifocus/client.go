@@ -3,6 +3,7 @@ package omnifocus
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -30,15 +31,29 @@ func (c *Client) GetScriptsDir() string {
 
 // findScriptsDir attempts to locate the scripts directory in multiple locations
 func findScriptsDir() string {
+	// Enable debug logging with MCP_OMNIFOCUS_DEBUG=1
+	debug := os.Getenv("MCP_OMNIFOCUS_DEBUG") == "1"
+
 	// Get the executable path
 	execPath, err := os.Executable()
 	if err != nil {
 		execPath = ""
+		if debug {
+			log.Printf("[DEBUG] Failed to get executable path: %v", err)
+		}
 	} else {
+		if debug {
+			log.Printf("[DEBUG] Executable path: %s", execPath)
+		}
 		// Resolve symlinks (important for Homebrew installations)
 		execPath, err = filepath.EvalSymlinks(execPath)
 		if err != nil {
+			if debug {
+				log.Printf("[DEBUG] Failed to resolve symlinks: %v", err)
+			}
 			execPath = ""
+		} else if debug {
+			log.Printf("[DEBUG] Resolved executable path: %s", execPath)
 		}
 	}
 
@@ -47,8 +62,13 @@ func findScriptsDir() string {
 
 	if execPath != "" {
 		execDir := filepath.Dir(execPath)
+		if debug {
+			log.Printf("[DEBUG] Executable directory: %s", execDir)
+		}
 
 		// 1. Scripts directory next to the binary (release package layout)
+		// This handles: mcp-omnifocus_v0.0.2_darwin_arm64/mcp-omnifocus
+		//               mcp-omnifocus_v0.0.2_darwin_arm64/scripts/
 		candidates = append(candidates, filepath.Join(execDir, "scripts"))
 
 		// 2. Scripts directory one level up (for bin/mcp-omnifocus structure)
@@ -56,37 +76,79 @@ func findScriptsDir() string {
 
 		// 3. Homebrew installation path (share/mcp-omnifocus/)
 		candidates = append(candidates, filepath.Join(execDir, "..", "share", "mcp-omnifocus", "scripts"))
+
+		// 4. Check if we're in a nested extracted archive structure
+		// Sometimes archives extract to: extracted_dir/mcp-omnifocus_version/mcp-omnifocus
+		// and scripts are at: extracted_dir/mcp-omnifocus_version/scripts/
+		parentDir := filepath.Dir(execDir)
+		candidates = append(candidates, filepath.Join(parentDir, "scripts"))
+
+		// 5. Walk up the directory tree looking for scripts/ (up to 3 levels)
+		// This helps when the binary is in a deeply nested location
+		currentDir := execDir
+		for i := 0; i < 3; i++ {
+			currentDir = filepath.Dir(currentDir)
+			candidates = append(candidates, filepath.Join(currentDir, "scripts"))
+		}
 	}
 
-	// 4. Relative to the Go source file (development mode with go run)
+	// 6. Relative to the Go source file (development mode with go run)
 	_, filename, _, ok := runtime.Caller(0)
 	if ok {
 		projectRoot := filepath.Join(filepath.Dir(filename), "..", "..")
 		candidates = append(candidates, filepath.Join(projectRoot, "scripts"))
+		if debug {
+			log.Printf("[DEBUG] Source file location: %s", filename)
+		}
 	}
 
-	// 5. Check current working directory (fallback)
+	// 7. Check current working directory and parent directories
 	if cwd, err := os.Getwd(); err == nil {
+		if debug {
+			log.Printf("[DEBUG] Current working directory: %s", cwd)
+		}
 		candidates = append(candidates, filepath.Join(cwd, "scripts"))
+		// Also check parent of cwd
+		candidates = append(candidates, filepath.Join(cwd, "..", "scripts"))
+	}
+
+	if debug {
+		log.Printf("[DEBUG] Checking %d candidate paths for scripts directory", len(candidates))
 	}
 
 	// Try each candidate path
-	for _, dir := range candidates {
+	for i, dir := range candidates {
 		absDir, err := filepath.Abs(dir)
 		if err != nil {
+			if debug {
+				log.Printf("[DEBUG] Candidate %d: %s - failed to get absolute path: %v", i+1, dir, err)
+			}
 			continue
+		}
+
+		if debug {
+			log.Printf("[DEBUG] Candidate %d: %s", i+1, absDir)
 		}
 
 		// Check if the directory exists and contains at least one .jxa file
 		if isValidScriptsDir(absDir) {
+			if debug {
+				log.Printf("[DEBUG] Found valid scripts directory: %s", absDir)
+			}
 			return absDir
+		} else if debug {
+			log.Printf("[DEBUG] Candidate %d: %s - not valid", i+1, absDir)
 		}
 	}
 
 	// If nothing found, fall back to the development layout
 	_, filename, _, _ = runtime.Caller(0)
 	projectRoot := filepath.Join(filepath.Dir(filename), "..", "..")
-	return filepath.Join(projectRoot, "scripts")
+	fallback := filepath.Join(projectRoot, "scripts")
+	if debug {
+		log.Printf("[DEBUG] No valid scripts directory found, using fallback: %s", fallback)
+	}
+	return fallback
 }
 
 // isValidScriptsDir checks if a directory exists and contains .jxa files
