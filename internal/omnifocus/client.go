@@ -8,25 +8,40 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"time"
 )
 
 // Client provides methods to interact with OmniFocus
 type Client struct {
 	scriptsDir string
+	cache      *Cache
 }
 
 // NewClient creates a new OmniFocus client with auto-detected scripts directory
+// and default cache TTL of 30 seconds
 func NewClient() *Client {
-	scriptsDir := findScriptsDir()
-	return &Client{
-		scriptsDir: scriptsDir,
-	}
+	return NewClientWithCache(findScriptsDir(), 30*time.Second)
 }
 
 // NewClientWithPath creates a new OmniFocus client with a specified scripts directory path
+// and default cache TTL of 30 seconds
 func NewClientWithPath(scriptsPath string) *Client {
+	return NewClientWithCache(scriptsPath, 30*time.Second)
+}
+
+// NewClientWithCache creates a new OmniFocus client with specified scripts directory and cache TTL
+// If cacheTTL is 0, caching is disabled
+func NewClientWithCache(scriptsPath string, cacheTTL time.Duration) *Client {
+	cache := NewCache(cacheTTL)
+
+	// Start cleanup timer to remove expired entries every minute
+	if cacheTTL > 0 {
+		cache.StartCleanupTimer(1 * time.Minute)
+	}
+
 	return &Client{
 		scriptsDir: scriptsPath,
+		cache:      cache,
 	}
 }
 
@@ -196,6 +211,14 @@ func (c *Client) executeJXA(scriptName string, args ...string) ([]byte, error) {
 
 // ListProjects retrieves all projects from OmniFocus
 func (c *Client) ListProjects() ([]Project, error) {
+	cacheKey := "projects:all"
+
+	// Check cache first
+	if cached, found := c.cache.Get(cacheKey); found {
+		return cached.([]Project), nil
+	}
+
+	// Cache miss - fetch from OmniFocus
 	output, err := c.executeJXA("list_projects.jxa")
 	if err != nil {
 		return nil, err
@@ -206,11 +229,26 @@ func (c *Client) ListProjects() ([]Project, error) {
 		return nil, fmt.Errorf("failed to parse projects: %w", err)
 	}
 
+	// Store in cache
+	c.cache.Set(cacheKey, projects)
+
 	return projects, nil
 }
 
 // ListTasks retrieves tasks from OmniFocus, optionally filtered by project ID
 func (c *Client) ListTasks(projectID string) ([]Task, error) {
+	// Create cache key based on whether we're filtering by project
+	cacheKey := "tasks:all"
+	if projectID != "" {
+		cacheKey = "tasks:project:" + projectID
+	}
+
+	// Check cache first
+	if cached, found := c.cache.Get(cacheKey); found {
+		return cached.([]Task), nil
+	}
+
+	// Cache miss - fetch from OmniFocus
 	var output []byte
 	var err error
 
@@ -229,11 +267,22 @@ func (c *Client) ListTasks(projectID string) ([]Task, error) {
 		return nil, fmt.Errorf("failed to parse tasks: %w", err)
 	}
 
+	// Store in cache
+	c.cache.Set(cacheKey, tasks)
+
 	return tasks, nil
 }
 
 // ListTags retrieves all tags from OmniFocus
 func (c *Client) ListTags() ([]Tag, error) {
+	cacheKey := "tags:all"
+
+	// Check cache first
+	if cached, found := c.cache.Get(cacheKey); found {
+		return cached.([]Tag), nil
+	}
+
+	// Cache miss - fetch from OmniFocus
 	output, err := c.executeJXA("list_tags.jxa")
 	if err != nil {
 		return nil, err
@@ -243,6 +292,9 @@ func (c *Client) ListTags() ([]Tag, error) {
 	if err := json.Unmarshal(output, &tags); err != nil {
 		return nil, fmt.Errorf("failed to parse tags: %w", err)
 	}
+
+	// Store in cache
+	c.cache.Set(cacheKey, tags)
 
 	return tags, nil
 }
@@ -266,6 +318,13 @@ func (c *Client) CreateTask(req CreateTaskRequest) (*OperationResult, error) {
 
 	if result.Error != "" {
 		return &result, fmt.Errorf("OmniFocus error: %s", result.Error)
+	}
+
+	// Invalidate task caches since we created a new task
+	c.cache.InvalidatePattern("tasks:")
+	// If task was added to a specific project, also invalidate project cache
+	if req.ProjectID != "" {
+		c.cache.InvalidatePattern("projects:")
 	}
 
 	return &result, nil
@@ -292,6 +351,9 @@ func (c *Client) CreateProject(req CreateProjectRequest) (*OperationResult, erro
 		return &result, fmt.Errorf("OmniFocus error: %s", result.Error)
 	}
 
+	// Invalidate project cache since we created a new project
+	c.cache.InvalidatePattern("projects:")
+
 	return &result, nil
 }
 
@@ -316,6 +378,11 @@ func (c *Client) UpdateTask(req UpdateTaskRequest) (*OperationResult, error) {
 		return &result, fmt.Errorf("OmniFocus error: %s", result.Error)
 	}
 
+	// Invalidate task caches since we updated a task
+	c.cache.InvalidatePattern("tasks:")
+	// Also invalidate project cache in case task counts changed
+	c.cache.InvalidatePattern("projects:")
+
 	return &result, nil
 }
 
@@ -334,6 +401,11 @@ func (c *Client) CompleteTask(taskID string) (*OperationResult, error) {
 	if result.Error != "" {
 		return &result, fmt.Errorf("OmniFocus error: %s", result.Error)
 	}
+
+	// Invalidate task caches since we completed a task
+	c.cache.InvalidatePattern("tasks:")
+	// Also invalidate project cache in case task counts changed
+	c.cache.InvalidatePattern("projects:")
 
 	return &result, nil
 }

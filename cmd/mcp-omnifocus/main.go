@@ -5,6 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
+	"strconv"
+	"time"
 
 	"github.com/conall/mcp-omnifocus/internal/omnifocus"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -19,14 +22,34 @@ const (
 func main() {
 	// Define command line flags
 	scriptsPath := flag.String("scripts", "", "Path to the JXA scripts directory (if not specified, auto-detection is used)")
+	cacheTTL := flag.Int("cache-ttl", 30, "Cache TTL in seconds (0 to disable caching)")
 	flag.Parse()
 
-	// Create OmniFocus client
-	var ofClient *omnifocus.Client
-	if *scriptsPath != "" {
-		ofClient = omnifocus.NewClientWithPath(*scriptsPath)
+	// Check for environment variable override
+	cacheTTLSeconds := *cacheTTL
+	if envTTL := os.Getenv("MCP_OMNIFOCUS_CACHE_TTL"); envTTL != "" {
+		if ttl, err := strconv.Atoi(envTTL); err == nil {
+			cacheTTLSeconds = ttl
+		}
+	}
+
+	// Create OmniFocus client with caching
+	ttlDuration := time.Duration(cacheTTLSeconds) * time.Second
+
+	// Create a temporary client to get the scripts directory
+	tempClient := omnifocus.NewClient()
+	scriptsDir := *scriptsPath
+	if scriptsDir == "" {
+		scriptsDir = tempClient.GetScriptsDir()
+	}
+
+	ofClient := omnifocus.NewClientWithCache(scriptsDir, ttlDuration)
+
+	// Log cache configuration
+	if cacheTTLSeconds > 0 {
+		log.Printf("Cache enabled with TTL: %d seconds", cacheTTLSeconds)
 	} else {
-		ofClient = omnifocus.NewClient()
+		log.Printf("Cache disabled")
 	}
 
 	// Create MCP server

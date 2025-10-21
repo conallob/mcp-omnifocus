@@ -1,6 +1,6 @@
 module github.com/conall/mcp-omnifocus
 
-go 1.23.2
+go 1.23
 
 require github.com/mark3labs/mcp-go v0.7.0
 

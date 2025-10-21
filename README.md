@@ -20,6 +20,11 @@ An MCP (Model Context Protocol) server for interacting with OmniFocus Pro, enabl
   - Complete tasks
   - Add tags to tasks and projects
 
+- **Performance**
+  - Built-in caching layer to speed up repeated queries
+  - Configurable cache TTL (default: 30 seconds)
+  - Automatic cache invalidation on write operations
+
 ## Requirements
 
 - macOS (OmniFocus is macOS/iOS only)
@@ -99,6 +104,40 @@ Replace the paths with the actual locations where you installed or built the bin
 
 **Note:** The `-scripts` argument is optional. If not provided, the server will attempt to auto-detect the scripts directory. However, explicitly specifying the path is recommended for reliability.
 
+### Configuration Options
+
+The server supports the following command-line flags:
+
+- `-scripts <path>`: Path to the JXA scripts directory (optional, auto-detected if not specified)
+- `-cache-ttl <seconds>`: Cache TTL in seconds (default: 30, set to 0 to disable caching)
+
+Example with custom cache TTL:
+```json
+{
+  "mcpServers": {
+    "omnifocus": {
+      "command": "/path/to/mcp-omnifocus",
+      "args": ["-scripts", "/path/to/scripts", "-cache-ttl", "60"]
+    }
+  }
+}
+```
+
+You can also set the cache TTL via environment variable:
+```json
+{
+  "mcpServers": {
+    "omnifocus": {
+      "command": "/path/to/mcp-omnifocus",
+      "args": ["-scripts", "/path/to/scripts"],
+      "env": {
+        "MCP_OMNIFOCUS_CACHE_TTL": "60"
+      }
+    }
+  }
+}
+```
+
 ## Available Tools
 
 ### Read Tools
@@ -134,6 +173,21 @@ The server is built in Go and uses:
 - **JXA (JavaScript for Automation)** to interact with OmniFocus's automation API
 - **mcp-go** SDK for implementing the MCP protocol
 - **stdio transport** for communication with MCP clients
+- **In-memory caching** with TTL to improve performance and reduce OmniFocus API calls
+
+### Caching Behavior
+
+The caching layer improves performance by storing results from read operations:
+
+- **Cached operations**: `list_projects`, `list_tasks`, `list_tags`
+- **Cache keys**: Separate keys for different query types (e.g., all tasks vs. project-specific tasks)
+- **Default TTL**: 30 seconds (configurable)
+- **Automatic invalidation**: Write operations automatically invalidate affected caches
+  - Creating a task invalidates task caches (and project caches if added to a project)
+  - Creating a project invalidates project caches
+  - Updating/completing a task invalidates both task and project caches
+- **Memory management**: Expired entries are automatically cleaned up every minute
+- **Disable caching**: Set cache TTL to 0 to disable caching entirely
 
 ### Project Structure
 

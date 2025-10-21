@@ -15,11 +15,14 @@ This is an MCP (Model Context Protocol) server written in Go that enables AI ass
    - Uses the `mcp-go` SDK (`github.com/mark3labs/mcp-go`)
    - Implements stdio transport for MCP communication
    - Registers all MCP tools and their handlers
+   - Configures caching layer with TTL settings
 
 2. **OmniFocus Client** (`internal/omnifocus/`)
    - `client.go`: Go wrapper that executes JXA scripts via `osascript`
    - `types.go`: Data structures for OmniFocus entities (Project, Task, Tag)
+   - `cache.go`: In-memory caching layer with TTL support
    - Handles JSON marshaling/unmarshaling between Go and JXA
+   - Implements cache invalidation on write operations
 
 3. **JXA Automation Scripts** (`scripts/*.jxa`)
    - Bridge layer between Go and OmniFocus
@@ -39,10 +42,13 @@ MCP Client ← stdio ← Go Server ← JSON output ← JXA Script ← OmniFocus
 
 ```
 cmd/mcp-omnifocus/          # Main server binary
-  main.go                   # Server setup and tool registration
+  main.go                   # Server setup, tool registration, cache config
 internal/omnifocus/         # OmniFocus client library
-  client.go                 # Executes JXA scripts, handles I/O
+  client.go                 # Executes JXA scripts, handles I/O, caching
+  client_test.go           # Tests for client functionality
   types.go                  # Go types for OmniFocus entities
+  cache.go                  # In-memory cache with TTL
+  cache_test.go            # Tests for caching functionality
 scripts/                    # JXA automation scripts
   list_projects.jxa         # Retrieve all projects
   list_tasks.jxa           # Retrieve tasks (all or by project)
@@ -95,6 +101,47 @@ All tools are registered in `cmd/mcp-omnifocus/main.go` in the `registerTools()`
 - `create_project` - Creates new project
 - `update_task` - Updates task properties
 - `complete_task` - Marks task complete
+
+## Caching Implementation
+
+The server includes a built-in caching layer to improve performance:
+
+### Cache Architecture
+
+- **Location**: `internal/omnifocus/cache.go`
+- **Type**: In-memory cache with TTL (Time To Live)
+- **Thread-safety**: Uses `sync.RWMutex` for concurrent access
+- **Cleanup**: Automatic background cleanup of expired entries
+
+### Cache Behavior
+
+1. **Read Operations** (cached):
+   - `ListProjects()` - Cache key: `"projects:all"`
+   - `ListTasks("")` - Cache key: `"tasks:all"`
+   - `ListTasks(projectID)` - Cache key: `"tasks:project:<projectID>"`
+   - `ListTags()` - Cache key: `"tags:all"`
+
+2. **Write Operations** (invalidate cache):
+   - `CreateTask()` - Invalidates all task caches, and project caches if task added to project
+   - `CreateProject()` - Invalidates all project caches
+   - `UpdateTask()` - Invalidates all task and project caches
+   - `CompleteTask()` - Invalidates all task and project caches
+
+3. **Configuration**:
+   - Default TTL: 30 seconds
+   - Command-line flag: `-cache-ttl <seconds>`
+   - Environment variable: `MCP_OMNIFOCUS_CACHE_TTL`
+   - Disable caching: Set TTL to 0
+
+### Cache Methods
+
+- `Get(key)` - Retrieve value if exists and not expired
+- `Set(key, value)` - Store value with TTL
+- `Invalidate(key)` - Remove specific key
+- `InvalidateAll()` - Clear entire cache
+- `InvalidatePattern(prefix)` - Remove all keys starting with prefix
+- `Cleanup()` - Remove expired entries
+- `StartCleanupTimer(interval)` - Background cleanup goroutine
 
 ## Important Implementation Notes
 
