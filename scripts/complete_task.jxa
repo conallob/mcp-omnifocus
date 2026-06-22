@@ -23,7 +23,7 @@ function run(argv) {
     if (!task) {
         return JSON.stringify({error: 'Task not found'});
     }
-    task.markComplete();
+    task.completed = true;
 
     return JSON.stringify({
         id: task.id(),
