@@ -24,3 +24,7 @@ go.work
 
 # OS
 .DS_Store
+
+# Test coverage output
+coverage.out
+coverage.html
