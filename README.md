@@ -1,8 +1,11 @@
 # mcp-omnifocus
 
 [![Build](https://github.com/conall/mcp-omnifocus/actions/workflows/build.yml/badge.svg)](https://github.com/conall/mcp-omnifocus/actions/workflows/build.yml)
-[![Release](https://github.com/conall/mcp-omnifocus/actions/workflows/release.yml/badge.svg)](https://github.com/conall/mcp-omnifocus/actions/workflows/release.yml)
-[![GitHub release](https://img.shields.io/github/v/release/conall/mcp-omnifocus)](https://github.com/conall/mcp-omnifocus/releases/latest)
+[![Go Report Card](https://goreportcard.com/badge/github.com/conallob/mcp-omnifocus)](https://goreportcard.com/report/github.com/conallob/mcp-omnifocus)
+[![codecov](https://codecov.io/gh/conallob/mcp-omnifocus/branch/main/graph/badge.svg)](https://codecov.io/gh/conallob/mcp-omnifocus)
+[![Go Version](https://img.shields.io/badge/Go-1.25%2B-blue)](https://go.dev/)
+[![GitHub release](https://img.shields.io/github/v/release/conallob/mcp-omnifocus)](https://github.com/conallob/mcp-omnifocus/releases/latest)
+
 
 An MCP (Model Context Protocol) server for interacting with OmniFocus Pro, enabling AI assistants to read and manage your OmniFocus projects and tasks through the OmniFocus automation API.
 
