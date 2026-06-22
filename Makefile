@@ -1,4 +1,4 @@
-.PHONY: build clean install test run validate-jxa
+.PHONY: build clean install test test-coverage run validate-jxa
 
 # Build the MCP server
 build:
@@ -50,3 +50,8 @@ validate-jxa:
 # Run all tests
 test: validate-jxa
 	go test ./...
+
+# Run tests with coverage report
+test-coverage:
+	go test ./... -coverprofile=coverage.out -covermode=atomic
+	go tool cover -func=coverage.out
