@@ -11,10 +11,23 @@ import (
 	"time"
 )
 
+// OmniFocusClient defines the interface for all OmniFocus operations.
+type OmniFocusClient interface {
+	ListProjects() ([]Project, error)
+	ListTasks(projectID string) ([]Task, error)
+	ListTags() ([]Tag, error)
+	CreateTask(req CreateTaskRequest) (*OperationResult, error)
+	CreateProject(req CreateProjectRequest) (*OperationResult, error)
+	UpdateTask(req UpdateTaskRequest) (*OperationResult, error)
+	CompleteTask(taskID string) (*OperationResult, error)
+}
+
 // Client provides methods to interact with OmniFocus
 type Client struct {
 	scriptsDir string
 	cache      *Cache
+	// executor overrides the default osascript runner; used in tests.
+	executor func(scriptName string, args ...string) ([]byte, error)
 }
 
 // NewClient creates a new OmniFocus client with auto-detected scripts directory
@@ -193,8 +206,13 @@ func isValidScriptsDir(dir string) bool {
 	return false
 }
 
-// executeJXA executes a JXA script and returns the output
+// executeJXA executes a JXA script and returns the output.
+// If c.executor is set it is used instead of osascript (useful in tests).
 func (c *Client) executeJXA(scriptName string, args ...string) ([]byte, error) {
+	if c.executor != nil {
+		return c.executor(scriptName, args...)
+	}
+
 	scriptPath := filepath.Join(c.scriptsDir, scriptName)
 
 	// Build command arguments: -l JavaScript, script path, then script arguments

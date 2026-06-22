@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/conall/mcp-omnifocus/internal/omnifocus"
@@ -67,7 +68,22 @@ func main() {
 	}
 }
 
-func registerTools(s *server.MCPServer, ofClient *omnifocus.Client) {
+// splitTags splits a comma-separated tag string, trimming surrounding spaces.
+func splitTags(tagsStr string) []string {
+	if tagsStr == "" {
+		return nil
+	}
+	raw := strings.Split(tagsStr, ",")
+	tags := make([]string, 0, len(raw))
+	for _, t := range raw {
+		if t = strings.TrimSpace(t); t != "" {
+			tags = append(tags, t)
+		}
+	}
+	return tags
+}
+
+func registerTools(s *server.MCPServer, client omnifocus.OmniFocusClient) {
 	// List Projects Tool
 	listProjectsTool := mcp.NewTool("list_projects",
 		mcp.WithDescription("List all projects in OmniFocus"),
@@ -75,26 +91,8 @@ func registerTools(s *server.MCPServer, ofClient *omnifocus.Client) {
 			mcp.Description("Optional filter for project status (active, on-hold, completed, dropped)"),
 		),
 	)
-
 	s.AddTool(listProjectsTool, func(args map[string]interface{}) (*mcp.CallToolResult, error) {
-		projects, err := ofClient.ListProjects()
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to list projects: %v", err)), nil
-		}
-
-		// Apply filter if provided
-		if filterVal, ok := args["filter"].(string); ok && filterVal != "" {
-			filtered := []omnifocus.Project{}
-			for _, p := range projects {
-				if p.Status == filterVal {
-					filtered = append(filtered, p)
-				}
-			}
-			projects = filtered
-		}
-
-		result, _ := json.MarshalIndent(projects, "", "  ")
-		return mcp.NewToolResultText(string(result)), nil
+		return handleListProjects(client, args)
 	})
 
 	// List Tasks Tool
@@ -104,35 +102,16 @@ func registerTools(s *server.MCPServer, ofClient *omnifocus.Client) {
 			mcp.Description("Optional project ID to filter tasks"),
 		),
 	)
-
 	s.AddTool(listTasksTool, func(args map[string]interface{}) (*mcp.CallToolResult, error) {
-		projectID := ""
-		if pid, ok := args["project_id"].(string); ok {
-			projectID = pid
-		}
-
-		tasks, err := ofClient.ListTasks(projectID)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to list tasks: %v", err)), nil
-		}
-
-		result, _ := json.MarshalIndent(tasks, "", "  ")
-		return mcp.NewToolResultText(string(result)), nil
+		return handleListTasks(client, args)
 	})
 
 	// List Tags Tool
 	listTagsTool := mcp.NewTool("list_tags",
 		mcp.WithDescription("List all tags in OmniFocus"),
 	)
-
 	s.AddTool(listTagsTool, func(args map[string]interface{}) (*mcp.CallToolResult, error) {
-		tags, err := ofClient.ListTags()
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to list tags: %v", err)), nil
-		}
-
-		result, _ := json.MarshalIndent(tags, "", "  ")
-		return mcp.NewToolResultText(string(result)), nil
+		return handleListTags(client, args)
 	})
 
 	// Create Task Tool
@@ -161,55 +140,8 @@ func registerTools(s *server.MCPServer, ofClient *omnifocus.Client) {
 			mcp.Description("Comma-separated list of tag names"),
 		),
 	)
-
 	s.AddTool(createTaskTool, func(args map[string]interface{}) (*mcp.CallToolResult, error) {
-		req := omnifocus.CreateTaskRequest{
-			Name: args["name"].(string),
-		}
-
-		if note, ok := args["note"].(string); ok {
-			req.Note = note
-		}
-		if projectID, ok := args["project_id"].(string); ok {
-			req.ProjectID = projectID
-		}
-		if dueDate, ok := args["due_date"].(string); ok {
-			req.DueDate = dueDate
-		}
-		if flagged, ok := args["flagged"].(bool); ok {
-			req.Flagged = flagged
-		}
-		if estimatedMinutes, ok := args["estimated_minutes"].(float64); ok {
-			minutes := int(estimatedMinutes)
-			req.EstimatedMinutes = minutes
-		}
-		if tagsStr, ok := args["tags"].(string); ok && tagsStr != "" {
-			// Simple split by comma
-			tags := []string{}
-			current := ""
-			for _, char := range tagsStr {
-				if char == ',' {
-					if current != "" {
-						tags = append(tags, current)
-						current = ""
-					}
-				} else if char != ' ' || current != "" {
-					current += string(char)
-				}
-			}
-			if current != "" {
-				tags = append(tags, current)
-			}
-			req.Tags = tags
-		}
-
-		result, err := ofClient.CreateTask(req)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to create task: %v", err)), nil
-		}
-
-		resultJSON, _ := json.MarshalIndent(result, "", "  ")
-		return mcp.NewToolResultText(string(resultJSON)), nil
+		return handleCreateTask(client, args)
 	})
 
 	// Create Project Tool
@@ -229,44 +161,8 @@ func registerTools(s *server.MCPServer, ofClient *omnifocus.Client) {
 			mcp.Description("Comma-separated list of tag names"),
 		),
 	)
-
 	s.AddTool(createProjectTool, func(args map[string]interface{}) (*mcp.CallToolResult, error) {
-		req := omnifocus.CreateProjectRequest{
-			Name: args["name"].(string),
-		}
-
-		if note, ok := args["note"].(string); ok {
-			req.Note = note
-		}
-		if status, ok := args["status"].(string); ok {
-			req.Status = status
-		}
-		if tagsStr, ok := args["tags"].(string); ok && tagsStr != "" {
-			tags := []string{}
-			current := ""
-			for _, char := range tagsStr {
-				if char == ',' {
-					if current != "" {
-						tags = append(tags, current)
-						current = ""
-					}
-				} else if char != ' ' || current != "" {
-					current += string(char)
-				}
-			}
-			if current != "" {
-				tags = append(tags, current)
-			}
-			req.Tags = tags
-		}
-
-		result, err := ofClient.CreateProject(req)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to create project: %v", err)), nil
-		}
-
-		resultJSON, _ := json.MarshalIndent(result, "", "  ")
-		return mcp.NewToolResultText(string(resultJSON)), nil
+		return handleCreateProject(client, args)
 	})
 
 	// Update Task Tool
@@ -295,39 +191,8 @@ func registerTools(s *server.MCPServer, ofClient *omnifocus.Client) {
 			mcp.Description("New estimated time in minutes"),
 		),
 	)
-
 	s.AddTool(updateTaskTool, func(args map[string]interface{}) (*mcp.CallToolResult, error) {
-		req := omnifocus.UpdateTaskRequest{
-			ID: args["id"].(string),
-		}
-
-		if name, ok := args["name"].(string); ok {
-			req.Name = &name
-		}
-		if note, ok := args["note"].(string); ok {
-			req.Note = &note
-		}
-		if completed, ok := args["completed"].(bool); ok {
-			req.Completed = &completed
-		}
-		if flagged, ok := args["flagged"].(bool); ok {
-			req.Flagged = &flagged
-		}
-		if dueDate, ok := args["due_date"].(string); ok {
-			req.DueDate = &dueDate
-		}
-		if estimatedMinutes, ok := args["estimated_minutes"].(float64); ok {
-			minutes := int(estimatedMinutes)
-			req.EstimatedMinutes = &minutes
-		}
-
-		result, err := ofClient.UpdateTask(req)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to update task: %v", err)), nil
-		}
-
-		resultJSON, _ := json.MarshalIndent(result, "", "  ")
-		return mcp.NewToolResultText(string(resultJSON)), nil
+		return handleUpdateTask(client, args)
 	})
 
 	// Complete Task Tool
@@ -338,16 +203,155 @@ func registerTools(s *server.MCPServer, ofClient *omnifocus.Client) {
 			mcp.Required(),
 		),
 	)
-
 	s.AddTool(completeTaskTool, func(args map[string]interface{}) (*mcp.CallToolResult, error) {
-		taskID := args["id"].(string)
-
-		result, err := ofClient.CompleteTask(taskID)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to complete task: %v", err)), nil
-		}
-
-		resultJSON, _ := json.MarshalIndent(result, "", "  ")
-		return mcp.NewToolResultText(string(resultJSON)), nil
+		return handleCompleteTask(client, args)
 	})
+}
+
+func handleListProjects(client omnifocus.OmniFocusClient, args map[string]interface{}) (*mcp.CallToolResult, error) {
+	projects, err := client.ListProjects()
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to list projects: %v", err)), nil
+	}
+
+	if filterVal, ok := args["filter"].(string); ok && filterVal != "" {
+		filtered := []omnifocus.Project{}
+		for _, p := range projects {
+			if p.Status == filterVal {
+				filtered = append(filtered, p)
+			}
+		}
+		projects = filtered
+	}
+
+	result, _ := json.MarshalIndent(projects, "", "  ")
+	return mcp.NewToolResultText(string(result)), nil
+}
+
+func handleListTasks(client omnifocus.OmniFocusClient, args map[string]interface{}) (*mcp.CallToolResult, error) {
+	projectID := ""
+	if pid, ok := args["project_id"].(string); ok {
+		projectID = pid
+	}
+
+	tasks, err := client.ListTasks(projectID)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to list tasks: %v", err)), nil
+	}
+
+	result, _ := json.MarshalIndent(tasks, "", "  ")
+	return mcp.NewToolResultText(string(result)), nil
+}
+
+func handleListTags(client omnifocus.OmniFocusClient, args map[string]interface{}) (*mcp.CallToolResult, error) {
+	tags, err := client.ListTags()
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to list tags: %v", err)), nil
+	}
+
+	result, _ := json.MarshalIndent(tags, "", "  ")
+	return mcp.NewToolResultText(string(result)), nil
+}
+
+func handleCreateTask(client omnifocus.OmniFocusClient, args map[string]interface{}) (*mcp.CallToolResult, error) {
+	req := omnifocus.CreateTaskRequest{
+		Name: args["name"].(string),
+	}
+
+	if note, ok := args["note"].(string); ok {
+		req.Note = note
+	}
+	if projectID, ok := args["project_id"].(string); ok {
+		req.ProjectID = projectID
+	}
+	if dueDate, ok := args["due_date"].(string); ok {
+		req.DueDate = dueDate
+	}
+	if flagged, ok := args["flagged"].(bool); ok {
+		req.Flagged = flagged
+	}
+	if estimatedMinutes, ok := args["estimated_minutes"].(float64); ok {
+		req.EstimatedMinutes = int(estimatedMinutes)
+	}
+	if tagsStr, ok := args["tags"].(string); ok {
+		req.Tags = splitTags(tagsStr)
+	}
+
+	result, err := client.CreateTask(req)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to create task: %v", err)), nil
+	}
+
+	resultJSON, _ := json.MarshalIndent(result, "", "  ")
+	return mcp.NewToolResultText(string(resultJSON)), nil
+}
+
+func handleCreateProject(client omnifocus.OmniFocusClient, args map[string]interface{}) (*mcp.CallToolResult, error) {
+	req := omnifocus.CreateProjectRequest{
+		Name: args["name"].(string),
+	}
+
+	if note, ok := args["note"].(string); ok {
+		req.Note = note
+	}
+	if status, ok := args["status"].(string); ok {
+		req.Status = status
+	}
+	if tagsStr, ok := args["tags"].(string); ok {
+		req.Tags = splitTags(tagsStr)
+	}
+
+	result, err := client.CreateProject(req)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to create project: %v", err)), nil
+	}
+
+	resultJSON, _ := json.MarshalIndent(result, "", "  ")
+	return mcp.NewToolResultText(string(resultJSON)), nil
+}
+
+func handleUpdateTask(client omnifocus.OmniFocusClient, args map[string]interface{}) (*mcp.CallToolResult, error) {
+	req := omnifocus.UpdateTaskRequest{
+		ID: args["id"].(string),
+	}
+
+	if name, ok := args["name"].(string); ok {
+		req.Name = &name
+	}
+	if note, ok := args["note"].(string); ok {
+		req.Note = &note
+	}
+	if completed, ok := args["completed"].(bool); ok {
+		req.Completed = &completed
+	}
+	if flagged, ok := args["flagged"].(bool); ok {
+		req.Flagged = &flagged
+	}
+	if dueDate, ok := args["due_date"].(string); ok {
+		req.DueDate = &dueDate
+	}
+	if estimatedMinutes, ok := args["estimated_minutes"].(float64); ok {
+		minutes := int(estimatedMinutes)
+		req.EstimatedMinutes = &minutes
+	}
+
+	result, err := client.UpdateTask(req)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to update task: %v", err)), nil
+	}
+
+	resultJSON, _ := json.MarshalIndent(result, "", "  ")
+	return mcp.NewToolResultText(string(resultJSON)), nil
+}
+
+func handleCompleteTask(client omnifocus.OmniFocusClient, args map[string]interface{}) (*mcp.CallToolResult, error) {
+	taskID := args["id"].(string)
+
+	result, err := client.CompleteTask(taskID)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to complete task: %v", err)), nil
+	}
+
+	resultJSON, _ := json.MarshalIndent(result, "", "  ")
+	return mcp.NewToolResultText(string(resultJSON)), nil
 }
