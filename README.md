@@ -1,6 +1,6 @@
 # mcp-omnifocus
 
-[![Build](https://github.com/conall/mcp-omnifocus/actions/workflows/build.yml/badge.svg)](https://github.com/conall/mcp-omnifocus/actions/workflows/build.yml)
+[![Build](https://github.com/conallob/mcp-omnifocus/actions/workflows/build.yml/badge.svg)](https://github.com/conallob/mcp-omnifocus/actions/workflows/build.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/conallob/mcp-omnifocus)](https://goreportcard.com/report/github.com/conallob/mcp-omnifocus)
 [![codecov](https://codecov.io/gh/conallob/mcp-omnifocus/branch/main/graph/badge.svg)](https://codecov.io/gh/conallob/mcp-omnifocus)
 [![Go Version](https://img.shields.io/badge/Go-1.25%2B-blue)](https://go.dev/)
