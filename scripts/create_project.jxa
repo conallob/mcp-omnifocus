@@ -11,7 +11,7 @@ function run(argv) {
     const doc = app.defaultDocument;
     const projectData = JSON.parse(argv[0]);
 
-    const project = doc.Project({name: projectData.name});
+    const project = app.Project({name: projectData.name});
     doc.projects.push(project);
 
     // Set optional properties
@@ -31,7 +31,7 @@ function run(argv) {
                 project.addTag(tags[0]);
             } else {
                 // Create tag if it doesn't exist
-                const newTag = doc.Tag({name: tagName});
+                const newTag = app.Tag({name: tagName});
                 doc.tags.push(newTag);
                 project.addTag(newTag);
             }

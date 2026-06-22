@@ -27,11 +27,11 @@ function run(argv) {
         if (!project) {
             return JSON.stringify({error: 'Project not found'});
         }
-        task = doc.Task({name: taskData.name});
+        task = app.Task({name: taskData.name});
         project.tasks.push(task);
     } else {
         // Add to inbox
-        task = doc.Task({name: taskData.name});
+        task = app.Task({name: taskData.name});
         doc.inboxTasks.push(task);
     }
 
@@ -68,7 +68,7 @@ function run(argv) {
                 task.addTag(foundTag);
             } else {
                 // Create tag if it doesn't exist
-                const newTag = doc.Tag({name: tagName});
+                const newTag = app.Tag({name: tagName});
                 doc.tags.push(newTag);
                 task.addTag(newTag);
             }
